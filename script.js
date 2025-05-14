@@ -242,25 +242,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ========== FUNCIONALIDADES DE CÂMERA E IMAGEM ==========
-    // Função para calcular dimensões proporcionais
-    function calculateCanvasDimensions(videoWidth, videoHeight, containerWidth, containerHeight) {
-        const containerRatio = containerWidth / containerHeight;
-        const videoRatio = videoWidth / videoHeight;
-
-        let canvasWidth, canvasHeight;
-        if (videoRatio > containerRatio) {
-            // Ajustar pela largura
-            canvasWidth = containerWidth;
-            canvasHeight = containerWidth / videoRatio;
-        } else {
-            // Ajustar pela altura
-            canvasHeight = containerHeight;
-            canvasWidth = containerHeight * videoRatio;
-        }
-
-        return { width: canvasWidth, height: canvasHeight };
-    }
-
     // Botão que alterna entre abrir câmera e tirar foto
     toggleCameraBtn.addEventListener('click', async () => {
         if (!isCameraActive) {
@@ -281,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 cameraView.srcObject = stream;
                 cameraView.style.display = 'block';
                 uploadBtn.disabled = true;
-                addTextBtn.disabled = true;
+                addTextBtn.disabled = true; // Desabilitar botão de texto enquanto câmera estiver ativa
                 
                 isCameraActive = true;
                 toggleCameraBtn.innerHTML = '<i class="fas fa-camera-retro"></i>';
@@ -292,37 +273,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } else {
             // Tirar foto
-            const containerRect = mediaContainer.getBoundingClientRect();
-            const { width: canvasWidth, height: canvasHeight } = calculateCanvasDimensions(
-                cameraView.videoWidth,
-                cameraView.videoHeight,
-                containerRect.width,
-                containerRect.height
-            );
-
             const canvas = document.createElement('canvas');
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
+            canvas.width = cameraView.videoWidth;
+            canvas.height = cameraView.videoHeight;
             const ctx = canvas.getContext('2d');
-
-            // Calcular proporções para manter a imagem centralizada
-            const videoRatio = cameraView.videoWidth / cameraView.videoHeight;
-            const canvasRatio = canvasWidth / canvasHeight;
-            let drawWidth, drawHeight, offsetX, offsetY;
-
-            if (videoRatio > canvasRatio) {
-                drawHeight = canvasHeight;
-                drawWidth = canvasHeight * videoRatio;
-                offsetX = (canvasWidth - drawWidth) / 2;
-                offsetY = 0;
-            } else {
-                drawWidth = canvasWidth;
-                drawHeight = canvasWidth / videoRatio;
-                offsetX = 0;
-                offsetY = (canvasHeight - drawHeight) / 2;
-            }
-
-            ctx.drawImage(cameraView, offsetX, offsetY, drawWidth, drawHeight);
+            ctx.drawImage(cameraView, 0, 0, canvas.width, canvas.height);
             
             // Efeito de flash
             cameraView.style.transition = '0.3s';
@@ -344,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
             isCameraActive = false;
             toggleCameraBtn.innerHTML = '<i class="fas fa-camera"></i>';
             uploadBtn.disabled = false;
-            addTextBtn.disabled = false;
+            addTextBtn.disabled = false; // Habilitar botão de texto depois de capturar foto
             
             showStatus("Foto capturada. Clique em 'Enviar para o Drive'.", 'info');
         }
@@ -373,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 uploadBtn.disabled = false;
-                addTextBtn.disabled = false;
+                addTextBtn.disabled = false; // Habilitar botão de texto depois de selecionar imagem
                 
                 showStatus("Imagem selecionada. Clique em 'Enviar para o Drive'.", 'info');
             };
@@ -402,6 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let filterValue = currentFilter;
         
         if (currentFilter !== 'none') {
+            // Ajustar intensidade do filtro
             filterValue = currentFilter.replace(/([\d.]+)/g, match => {
                 return parseFloat(match) * intensity;
             });
@@ -432,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             currentImage = canvas.toDataURL('image/jpeg');
             imagePreview.src = currentImage;
-            imagePreview.style.filter = 'none';
+            imagePreview.style.filter = 'none'; // Reset para aplicar novos filtros
             currentFilter = 'none';
             filterBtns.forEach(b => b.classList.remove('active'));
             document.querySelector('.filter-btn[data-filter="none"]').classList.add('active');
@@ -569,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function() {
         cameraView.style.display = 'none';
         resetStatus();
         uploadBtn.disabled = true;
-        addTextBtn.disabled = true;
+        addTextBtn.disabled = true; // Desabilitar botão de texto ao resetar
         fileInput.value = '';
         
         // Remover todos os textos

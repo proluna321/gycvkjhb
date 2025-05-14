@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enviar Foto para o Drive</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,19 +14,20 @@
 
         <div class="button-container">
             <div class="button-row">
-                <button id="toggleCamera" class="btn btn-primary" title="Abrir Câmera/Tirar Foto">
+                <button id="toggleCamera" class="btn btn-primary" title="Abrir Câmera / Tirar Foto">
                     <i class="fas fa-camera"></i>
                 </button>
-                <button id="chooseFile" class="btn btn-secondary" title="Escolher Arquivo">
+                <button id="chooseFile" class="btn btn-secondary" title="Escolher Imagem">
                     <i class="fas fa-file-upload"></i>
                 </button>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+            <div class="button-row">
                 <button id="addTextBtn" class="btn btn-accent" title="Adicionar Texto">
                     <i class="fas fa-font"></i>
                 </button>
-            </div>
-            <div class="button-row">
                 <button id="uploadBtn" class="btn btn-success" disabled title="Enviar para o Drive">
-                    <i class="fas fa-upload"></i>
+                    <i class="fas fa-cloud-upload-alt"></i>
                 </button>
             </div>
         </div>
@@ -44,61 +46,53 @@
                     <input type="range" id="textSize" class="size-slider" min="12" max="72" value="24">
                     <span id="textSizeValue" class="size-value">24px</span>
                     <button id="changeFont" class="btn-text">Arial</button>
-                    <button id="alignLeft" class="btn-text"><i class="fas fa-align-left"></i></button>
-                    <button id="alignCenter" class="btn-text"><i class="fas fa-align-center"></i></button>
-                    <button id="alignRight" class="btn-text"><i class="fas fa-align-right"></i></button>
-                    <button id="finishText" class="btn-text done">OK</button>
+                    <button id="alignLeft" class="btn-text" title="Alinhar à esquerda"><i class="fas fa-align-left"></i></button>
+                    <button id="alignCenter" class="btn-text" title="Centralizar"><i class="fas fa-align-center"></i></button>
+                    <button id="alignRight" class="btn-text" title="Alinhar à direita"><i class="fas fa-align-right"></i></button>
+                    <button id="finishText" class="btn-text done">Concluir</button>
                 </div>
             </div>
         </div>
 
-        <div id="filtersContainer" class="filters-container">
+        <div id="filtersContainer" class="filters-container" style="display: none;">
             <h3><i class="fas fa-sliders-h"></i> Filtros</h3>
             <div class="filters-scroll">
                 <div class="filter-btn active" data-filter="none">
-                    <img src="https://via.placeholder.com/80" class="filter-preview" style="filter: none;">
                     <span>Normal</span>
                 </div>
                 <div class="filter-btn" data-filter="saturate(2)">
-                    <img src="https://via.placeholder.com/80" class="filter-preview" style="filter: saturate(2);">
                     <span>Vibrante</span>
                 </div>
                 <div class="filter-btn" data-filter="sepia(0.8)">
-                    <img src="https://via.placeholder.com/80" class="filter-preview" style="filter: sepia(0.8);">
                     <span>Vintage</span>
                 </div>
                 <div class="filter-btn" data-filter="grayscale(1)">
-                    <img src="https://via.placeholder.com/80" class="filter-preview" style="filter: grayscale(1);">
                     <span>Preto e Branco</span>
                 </div>
                 <div class="filter-btn" data-filter="hue-rotate(90deg)">
-                    <img src="https://via.placeholder.com/80" class="filter-preview" style="filter: hue-rotate(90deg);">
                     <span>Verde Ácido</span>
                 </div>
                 <div class="filter-btn" data-filter="contrast(2)">
-                    <img src="https://via.placeholder.com/80" class="filter-preview" style="filter: contrast(2);">
                     <span>Alto Contraste</span>
                 </div>
                 <div class="filter-btn" data-filter="invert(1)">
-                    <img src="https://via.placeholder.com/80" class="filter-preview" style="filter: invert(1);">
                     <span>Negativo</span>
                 </div>
                 <div class="filter-btn" data-filter="blur(2px)">
-                    <img src="https://via.placeholder.com/80" class="filter-preview" style="filter: blur(2px);">
                     <span>Desfoque</span>
                 </div>
             </div>
             <div class="filter-controls">
                 <input type="range" id="filterIntensity" class="filter-slider" min="0" max="100" value="100">
-                <button id="applyFilter" class="btn btn-success btn-text">Aplicar</button>
-                <button id="resetFilter" class="btn btn-danger btn-text">Resetar</button>
+                <button id="applyFilter" class="btn btn-success">Aplicar</button>
+                <button id="resetFilter" class="btn btn-text danger">Resetar</button>
             </div>
         </div>
 
         <div id="status" class="status"></div>
         <div id="progressContainer" class="progress-container">
             <div id="progressBar" class="progress-bar"></div>
-            <span id="progressText" class="progress-text">0%</span>
+            <div id="progressText" class="progress-text">0%</div>
         </div>
     </div>
     <script src="script.js"></script>
