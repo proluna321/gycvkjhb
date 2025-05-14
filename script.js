@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Elementos da página
     const toggleCameraBtn = document.getElementById('toggleCamera');
+    const capturePhotoBtn = document.getElementById('capturePhoto');
     const uploadBtn = document.getElementById('uploadBtn');
     const chooseFileBtn = document.getElementById('chooseFile');
     const addTextBtn = document.getElementById('addTextBtn');
@@ -12,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
     const progressText = document.getElementById('progressText');
+    const mediaContainer = document.getElementById('mediaContainer');
 
     // Elementos dos filtros
     const filtersContainer = document.getElementById('filtersContainer');
@@ -42,7 +44,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const alignCenter = document.getElementById('alignCenter');
     const alignRight = document.getElementById('alignRight');
     const finishText = document.getElementById('finishText');
-    const mediaContainer = document.querySelector('.media-container');
 
     // Habilitar botão de texto quando houver imagem
     function checkImageForText() {
@@ -122,35 +123,61 @@ document.addEventListener('DOMContentLoaded', function() {
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
         
         element.onmousedown = dragMouseDown;
+        element.ontouchstart = dragTouchDown;
         
         function dragMouseDown(e) {
             e = e || window.event;
             e.preventDefault();
             e.stopPropagation();
             
-            // Get the mouse cursor position at startup
             pos3 = e.clientX;
             pos4 = e.clientY;
             document.onmouseup = closeDragElement;
             document.onmousemove = elementDrag;
+        }
+
+        function dragTouchDown(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            pos3 = e.touches[0].clientX;
+            pos4 = e.touches[0].clientY;
+            document.ontouchend = closeDragElement;
+            document.ontouchmove = elementDragTouch;
         }
         
         function elementDrag(e) {
             e = e || window.event;
             e.preventDefault();
             
-            // Calculate the new cursor position
             pos1 = pos3 - e.clientX;
             pos2 = pos4 - e.clientY;
             pos3 = e.clientX;
             pos4 = e.clientY;
             
-            // Set the element's new position
             const rect = mediaContainer.getBoundingClientRect();
             let newTop = (element.offsetTop - pos2) / rect.height * 100;
             let newLeft = (element.offsetLeft - pos1) / rect.width * 100;
             
-            // Limit to container bounds
+            newTop = Math.max(0, Math.min(100, newTop));
+            newLeft = Math.max(0, Math.min(100, newLeft));
+            
+            element.style.top = `${newTop}%`;
+            element.style.left = `${newLeft}%`;
+        }
+        
+        function elementDragTouch(e) {
+            e.preventDefault();
+            
+            pos1 = pos3 - e.touches[0].clientX;
+            pos2 = pos4 - e.touches[0].clientY;
+            pos3 = e.touches[0].clientX;
+            pos4 = e.touches[0].clientY;
+            
+            const rect = mediaContainer.getBoundingClientRect();
+            let newTop = (element.offsetTop - pos2) / rect.height * 100;
+            let newLeft = (element.offsetLeft - pos1) / rect.width * 100;
+            
             newTop = Math.max(0, Math.min(100, newTop));
             newLeft = Math.max(0, Math.min(100, newLeft));
             
@@ -161,6 +188,8 @@ document.addEventListener('DOMContentLoaded', function() {
         function closeDragElement() {
             document.onmouseup = null;
             document.onmousemove = null;
+            document.ontouchend = null;
+            document.ontouchmove = null;
         }
     }
 
@@ -233,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function rgbToHex(rgb) {
         if (!rgb) return '#000000';
         const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-        if (!match) return rgb; // Já está em formato HEX
+        if (!match) return rgb;
         
         function hex(x) {
             return ("0" + parseInt(x).toString(16)).slice(-2);
@@ -242,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ========== FUNCIONALIDADES DE CÂMERA E IMAGEM ==========
-    // Botão que alterna entre abrir câmera e tirar foto
+    // Botão para abrir/fechar câmera
     toggleCameraBtn.addEventListener('click', async () => {
         if (!isCameraActive) {
             // Abrir câmera
@@ -254,55 +283,95 @@ document.addEventListener('DOMContentLoaded', function() {
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
                     } 
                 });
                 
                 cameraView.srcObject = stream;
                 cameraView.style.display = 'block';
+                mediaContainer.classList.add('fullscreen');
+                capturePhotoBtn.style.display = 'block';
                 uploadBtn.disabled = true;
-                addTextBtn.disabled = true; // Desabilitar botão de texto enquanto câmera estiver ativa
+                addTextBtn.disabled = true;
                 
                 isCameraActive = true;
-                toggleCameraBtn.innerHTML = '<i class="fas fa-camera-retro"></i>';
+                toggleCameraBtn.innerHTML = '<i class="fas fa-times"></i>';
                 
-                showStatus("Câmera ativada. Posicione e clique em.", 'info');
+                showStatus("Câmera ativada. Posicione e clique no botão vermelho para capturar.", 'info');
             } catch (err) {
                 showError("Erro ao acessar a câmera: " + err.message);
             }
         } else {
-            // Tirar foto
-            const canvas = document.createElement('canvas');
-            canvas.width = cameraView.videoWidth;
-            canvas.height = cameraView.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(cameraView, 0, 0, canvas.width, canvas.height);
-            
-            // Efeito de flash
-            cameraView.style.transition = '0.3s';
-            cameraView.style.filter = 'brightness(2)';
-            setTimeout(() => {
-                cameraView.style.filter = 'brightness(1)';
-            }, 300);
-            
-            currentImage = canvas.toDataURL('image/jpeg', 0.8);
-            imagePreview.src = currentImage;
-            imagePreview.style.display = 'block';
-            cameraView.style.display = 'none';
-            
+            // Fechar câmera
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 stream = null;
             }
-            
+            cameraView.style.display = 'none';
+            mediaContainer.classList.remove('fullscreen');
+            capturePhotoBtn.style.display = 'none';
+            placeholder.style.display = 'flex';
             isCameraActive = false;
             toggleCameraBtn.innerHTML = '<i class="fas fa-camera"></i>';
-            uploadBtn.disabled = false;
-            addTextBtn.disabled = false; // Habilitar botão de texto depois de capturar foto
-            
-            showStatus("Foto capturada. Clique em 'Enviar para o Drive'.", 'info');
+            resetStatus();
         }
+    });
+
+    // Botão para tirar foto
+    capturePhotoBtn.addEventListener('click', () => {
+        const canvas = document.createElement('canvas');
+        const videoWidth = cameraView.videoWidth;
+        const videoHeight = cameraView.videoHeight;
+        
+        canvas.width = videoWidth;
+        canvas.height = videoHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(cameraView, 0, 0, canvas.width, canvas.height);
+        
+        // Efeito de flash
+        cameraView.style.transition = '0.3s';
+        cameraView.style.filter = 'brightness(2)';
+        setTimeout(() => {
+            cameraView.style.filter = 'brightness(1)';
+        }, 300);
+        
+        currentImage = canvas.toDataURL('image/jpeg', 0.9);
+        imagePreview.src = currentImage;
+        imagePreview.style.display = 'block';
+        cameraView.style.display = 'none';
+        mediaContainer.classList.remove('fullscreen');
+        capturePhotoBtn.style.display = 'none';
+        
+        // Ajustar imagem para caber no container mantendo proporção
+        const containerRect = mediaContainer.getBoundingClientRect();
+        const aspectRatio = videoWidth / videoHeight;
+        let newWidth = containerRect.width;
+        let newHeight = newWidth / aspectRatio;
+        
+        if (newHeight > containerRect.height) {
+            newHeight = containerRect.height;
+            newWidth = newHeight * aspectRatio;
+        }
+        
+        imagePreview.style.width = `${newWidth}px`;
+        imagePreview.style.height = `${newHeight}px`;
+        imagePreview.style.maxWidth = '100%';
+        imagePreview.style.maxHeight = '100%';
+        imagePreview.style.transform = 'translate(-50%, -50%)';
+        
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        
+        isCameraActive = false;
+        toggleCameraBtn.innerHTML = '<i class="fas fa-camera"></i>';
+        uploadBtn.disabled = false;
+        addTextBtn.disabled = false;
+        
+        showStatus("Foto capturada. Clique em 'Enviar para o Drive'.", 'info');
     });
 
     // Escolher arquivo
@@ -321,6 +390,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 imagePreview.src = currentImage;
                 imagePreview.style.display = 'block';
                 cameraView.style.display = 'none';
+                mediaContainer.classList.remove('fullscreen');
+                capturePhotoBtn.style.display = 'none';
+                
+                // Ajustar imagem carregada para caber no container
+                const img = new Image();
+                img.onload = () => {
+                    const containerRect = mediaContainer.getBoundingClientRect();
+                    const aspectRatio = img.width / img.height;
+                    let newWidth = containerRect.width;
+                    let newHeight = newWidth / aspectRatio;
+                    
+                    if (newHeight > containerRect.height) {
+                        newHeight = containerRect.height;
+                        newWidth = newHeight * aspectRatio;
+                    }
+                    
+                    imagePreview.style.width = `${newWidth}px`;
+                    imagePreview.style.height = `${newHeight}px`;
+                    imagePreview.style.maxWidth = '100%';
+                    imagePreview.style.maxHeight = '100%';
+                    imagePreview.style.transform = 'translate(-50%, -50%)';
+                };
+                img.src = currentImage;
                 
                 if (stream) {
                     stream.getTracks().forEach(track => track.stop());
@@ -328,7 +420,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 uploadBtn.disabled = false;
-                addTextBtn.disabled = false; // Habilitar botão de texto depois de selecionar imagem
+                addTextBtn.disabled = false;
                 
                 showStatus("Imagem selecionada. Clique em 'Enviar para o Drive'.", 'info');
             };
@@ -357,7 +449,6 @@ document.addEventListener('DOMContentLoaded', function() {
         let filterValue = currentFilter;
         
         if (currentFilter !== 'none') {
-            // Ajustar intensidade do filtro
             filterValue = currentFilter.replace(/([\d.]+)/g, match => {
                 return parseFloat(match) * intensity;
             });
@@ -386,13 +477,30 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.filter = imagePreview.style.filter || 'none';
             ctx.drawImage(img, 0, 0);
             
-            currentImage = canvas.toDataURL('image/jpeg');
+            currentImage = canvas.toDataURL('image/jpeg', 0.9);
             imagePreview.src = currentImage;
-            imagePreview.style.filter = 'none'; // Reset para aplicar novos filtros
+            imagePreview.style.filter = 'none';
             currentFilter = 'none';
             filterBtns.forEach(b => b.classList.remove('active'));
             document.querySelector('.filter-btn[data-filter="none"]').classList.add('active');
             filterIntensity.value = 100;
+            
+            // Reajustar imagem após aplicar filtro
+            const containerRect = mediaContainer.getBoundingClientRect();
+            const aspectRatio = img.width / img.height;
+            let newWidth = containerRect.width;
+            let newHeight = newWidth / aspectRatio;
+            
+            if (newHeight > containerRect.height) {
+                newHeight = containerRect.height;
+                newWidth = newHeight * aspectRatio;
+            }
+            
+            imagePreview.style.width = `${newWidth}px`;
+            imagePreview.style.height = `${newHeight}px`;
+            imagePreview.style.maxWidth = '100%';
+            imagePreview.style.maxHeight = '100%';
+            imagePreview.style.transform = 'translate(-50%, -50%)';
             
             showStatus("Filtro aplicado com sucesso!", 'success');
         };
@@ -448,7 +556,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const fontFamily = textElement.style.fontFamily || 'Arial';
                 const textAlign = textElement.style.textAlign || 'center';
                 
-                // Calcular posição baseada em porcentagem
                 const left = parseFloat(textElement.style.left) || 50;
                 const top = parseFloat(textElement.style.top) || 50;
                 
@@ -460,12 +567,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 ctx.textAlign = textAlign;
                 ctx.textBaseline = 'middle';
                 
-                // Desenhar texto
                 ctx.fillText(text, x, y);
             });
             
             // Converter para base64
-            const finalImage = canvas.toDataURL('image/jpeg', 0.8);
+            const finalImage = canvas.toDataURL('image/jpeg', 0.9);
             const base64Data = finalImage.split(',')[1];
             
             // Enviar para o Google Apps Script
@@ -481,7 +587,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 uploadBtn.disabled = true;
                 currentImage = null;
                 
-                // Resetar após 5 segundos
                 setTimeout(() => {
                     resetInterface();
                 }, 5000);
@@ -523,16 +628,16 @@ document.addEventListener('DOMContentLoaded', function() {
         placeholder.style.display = 'flex';
         imagePreview.style.display = 'none';
         cameraView.style.display = 'none';
+        mediaContainer.classList.remove('fullscreen');
+        capturePhotoBtn.style.display = 'none';
         resetStatus();
         uploadBtn.disabled = true;
-        addTextBtn.disabled = true; // Desabilitar botão de texto ao resetar
+        addTextBtn.disabled = true;
         fileInput.value = '';
         
-        // Remover todos os textos
         document.querySelectorAll('.draggable-text').forEach(el => el.remove());
         textToolbar.style.display = 'none';
         
-        // Resetar filtros
         imagePreview.style.filter = 'none';
         currentFilter = 'none';
         filterBtns.forEach(b => b.classList.remove('active'));
@@ -544,7 +649,6 @@ document.addEventListener('DOMContentLoaded', function() {
             stream = null;
         }
         
-        // Resetar botão da câmera
         isCameraActive = false;
         toggleCameraBtn.innerHTML = '<i class="fas fa-camera"></i>';
     }
@@ -566,6 +670,6 @@ document.addEventListener('DOMContentLoaded', function() {
         progressText.textContent = `${Math.round(percent)}%`;
     }
     
-    // Inicializar - desabilitar o botão de texto no carregamento
+    // Inicializar
     addTextBtn.disabled = true;
 });
