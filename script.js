@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
     const progressText = document.getElementById('progressText');
+    const cameraControls = document.getElementById('cameraControls');
+    const cancelCameraBtn = document.getElementById('cancelCamera');
+    const capturePhotoBtn = document.getElementById('capturePhoto');
+    const flipCameraBtn = document.getElementById('flipCamera');
 
     // Elementos dos filtros
     const filtersContainer = document.getElementById('filtersContainer');
@@ -30,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentFilter = 'none';
     let currentFilterIntensity = 100;
     let isCameraActive = false;
+    let facingMode = 'environment'; // Começa com a câmera traseira
 
     // Inicializar editor de texto
     const textToolbar = document.getElementById('textToolbar');
@@ -63,294 +68,148 @@ document.addEventListener('DOMContentLoaded', function() {
     observer.observe(imagePreview, { attributes: true, attributeFilter: ['style'] });
     observer.observe(cameraView, { attributes: true, attributeFilter: ['style'] });
 
-    // ========== FUNCIONALIDADES DE TEXTO ==========
-    // Adicionar novo texto
-    addTextBtn.addEventListener('click', () => {
-        addTextElement('Clique para editar');
-    });
-
-    // Criar elemento de texto
-    function addTextElement(initialText) {
-        const textElement = document.createElement('div');
-        textElement.className = 'draggable-text text-active';
-        textElement.contentEditable = true;
-        textElement.textContent = initialText;
-        textElement.style.color = textColor.value;
-        textElement.style.fontSize = `${textSize.value}px`;
-        textElement.style.fontFamily = fonts[currentFontIndex];
-        
-        // Posicionar no centro
-        textElement.style.left = '50%';
-        textElement.style.top = '50%';
-        
-        // Tornar arrastável
-        makeDraggable(textElement);
-        
-        // Selecionar ao clicar
-        textElement.addEventListener('click', (e) => {
-            e.stopPropagation();
-            selectTextElement(textElement);
-        });
-        
-        mediaContainer.appendChild(textElement);
-        selectTextElement(textElement);
-        textInput.value = initialText;
-        textInput.focus();
-    }
-
-    // Selecionar elemento de texto
-    function selectTextElement(element) {
-        if (activeTextElement) {
-            activeTextElement.classList.remove('text-active');
-            activeTextElement.contentEditable = false;
-        }
-        activeTextElement = element;
-        element.classList.add('text-active');
-        element.contentEditable = true;
-        textToolbar.style.display = 'block';
-        
-        // Atualizar controles com as propriedades do texto selecionado
-        textInput.value = element.textContent;
-        textColor.value = rgbToHex(element.style.color) || '#000000';
-        const fontSize = parseInt(element.style.fontSize);
-        textSize.value = isNaN(fontSize) ? 24 : fontSize;
-        textSizeValue.textContent = `${textSize.value}px`;
-    }
-
-    // Tornar elemento arrastável
-    function makeDraggable(element) {
-        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-        
-        element.onmousedown = dragMouseDown;
-        
-        function dragMouseDown(e) {
-            e = e || window.event;
-            e.preventDefault();
-            e.stopPropagation();
+    // Função para iniciar a câmera
+    async function startCamera() {
+        try {
+            resetStatus();
+            placeholder.style.display = 'none';
+            imagePreview.style.display = 'none';
             
-            // Get the mouse cursor position at startup
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            document.onmouseup = closeDragElement;
-            document.onmousemove = elementDrag;
-        }
-        
-        function elementDrag(e) {
-            e = e || window.event;
-            e.preventDefault();
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: facingMode,
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                } 
+            });
             
-            // Calculate the new cursor position
-            pos1 = pos3 - e.clientX;
-            pos2 = pos4 - e.clientY;
-            pos3 = e.clientX;
-            pos4 = e.clientY;
+            cameraView.srcObject = stream;
+            cameraView.style.display = 'block';
+            uploadBtn.disabled = true;
+            addTextBtn.disabled = true;
             
-            // Set the element's new position
-            const rect = mediaContainer.getBoundingClientRect();
-            let newTop = (element.offsetTop - pos2) / rect.height * 100;
-            let newLeft = (element.offsetLeft - pos1) / rect.width * 100;
+            isCameraActive = true;
+            toggleCameraBtn.innerHTML = '<i class="fas fa-camera"></i>';
             
-            // Limit to container bounds
-            newTop = Math.max(0, Math.min(100, newTop));
-            newLeft = Math.max(0, Math.min(100, newLeft));
+            // Entrar em modo de tela cheia
+            mediaContainer.classList.add('fullscreen');
+            cameraControls.style.display = 'flex';
+            document.querySelector('.container').style.display = 'none';
             
-            element.style.top = `${newTop}%`;
-            element.style.left = `${newLeft}%`;
-        }
-        
-        function closeDragElement() {
-            document.onmouseup = null;
-            document.onmousemove = null;
+            // Ajustar proporção do vídeo
+            cameraView.onloadedmetadata = () => {
+                const videoWidth = cameraView.videoWidth;
+                const videoHeight = cameraView.videoHeight;
+                const aspectRatio = videoWidth / videoHeight;
+                const containerRect = mediaContainer.getBoundingClientRect();
+                
+                let newWidth = containerRect.width;
+                let newHeight = newWidth / aspectRatio;
+                
+                if (newHeight > containerRect.height) {
+                    newHeight = containerRect.height;
+                    newWidth = newHeight * aspectRatio;
+                }
+                
+                cameraView.style.width = `${newWidth}px`;
+                cameraView.style.height = `${newHeight}px`;
+                cameraView.style.maxWidth = '100%';
+                cameraView.style.maxHeight = '100%';
+            };
+            
+            showStatus("Câmera ativada. Posicione e clique em.", 'info');
+        } catch (err) {
+            showError("Erro ao acessar a câmera: " + err.message);
+            exitFullscreen();
         }
     }
 
-    // Atualizar texto em tempo real
-    textInput.addEventListener('input', () => {
-        if (activeTextElement) {
-            activeTextElement.textContent = textInput.value;
+    // Função para sair do modo de tela cheia
+    function exitFullscreen() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
         }
-    });
-
-    // Atualizar cor em tempo real
-    textColor.addEventListener('input', () => {
-        if (activeTextElement) {
-            activeTextElement.style.color = textColor.value;
-        }
-    });
-
-    // Atualizar tamanho em tempo real
-    textSize.addEventListener('input', () => {
-        const size = textSize.value;
-        textSizeValue.textContent = `${size}px`;
-        if (activeTextElement) {
-            activeTextElement.style.fontSize = `${size}px`;
-        }
-    });
-
-    // Mudar fonte
-    changeFont.addEventListener('click', () => {
-        currentFontIndex = (currentFontIndex + 1) % fonts.length;
-        changeFont.textContent = fonts[currentFontIndex];
-        if (activeTextElement) {
-            activeTextElement.style.fontFamily = fonts[currentFontIndex];
-        }
-    });
-
-    // Alinhamento
-    alignLeft.addEventListener('click', () => {
-        if (activeTextElement) activeTextElement.style.textAlign = 'left';
-    });
-    alignCenter.addEventListener('click', () => {
-        if (activeTextElement) activeTextElement.style.textAlign = 'center';
-    });
-    alignRight.addEventListener('click', () => {
-        if (activeTextElement) activeTextElement.style.textAlign = 'right';
-    });
-
-    // Finalizar edição
-    finishText.addEventListener('click', () => {
-        if (activeTextElement) {
-            activeTextElement.classList.remove('text-active');
-            activeTextElement.contentEditable = false;
-            activeTextElement = null;
-            textToolbar.style.display = 'none';
-        }
-    });
-
-    // Selecionar texto ao clicar no container
-    mediaContainer.addEventListener('click', (e) => {
-        if (e.target === mediaContainer) {
-            if (activeTextElement) {
-                activeTextElement.classList.remove('text-active');
-                activeTextElement.contentEditable = false;
-                activeTextElement = null;
-                textToolbar.style.display = 'none';
-            }
-        }
-    });
-
-    // Converter RGB para HEX
-    function rgbToHex(rgb) {
-        if (!rgb) return '#000000';
-        const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-        if (!match) return rgb; // Já está em formato HEX
-        
-        function hex(x) {
-            return ("0" + parseInt(x).toString(16)).slice(-2);
-        }
-        return "#" + hex(match[1]) + hex(match[2]) + hex(match[3]);
+        cameraView.style.display = 'none';
+        mediaContainer.classList.remove('fullscreen');
+        cameraControls.style.display = 'none';
+        document.querySelector('.container').style.display = 'block';
+        placeholder.style.display = 'flex';
+        isCameraActive = false;
+        toggleCameraBtn.innerHTML = '<i class="fas fa-camera"></i>';
+        resetStatus();
     }
 
-    // ========== FUNCIONALIDADES DE CÂMERA E IMAGEM ==========
-    // Botão que alterna entre abrir câmera e tirar foto
+    // Botão para abrir a câmera
     toggleCameraBtn.addEventListener('click', async () => {
         if (!isCameraActive) {
-            // Abrir câmera
-            try {
-                resetStatus();
-                placeholder.style.display = 'none';
-                imagePreview.style.display = 'none';
-                
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 1920 }, // Aumentar para resolução mais alta
-                        height: { ideal: 1080 } // Aumentar para resolução mais alta
-                    } 
-                });
-                
-                cameraView.srcObject = stream;
-                cameraView.style.display = 'block';
-                uploadBtn.disabled = true;
-                addTextBtn.disabled = true;
-                
-                isCameraActive = true;
-                toggleCameraBtn.innerHTML = '<i class="fas fa-camera-retro"></i>';
-                
-                // Ajustar proporção do vídeo
-                cameraView.onloadedmetadata = () => {
-                    const videoWidth = cameraView.videoWidth;
-                    const videoHeight = cameraView.videoHeight;
-                    const aspectRatio = videoWidth / videoHeight;
-                    const container = document.querySelector('.media-container');
-                    const containerRect = container.getBoundingClientRect();
-                    
-                    let newWidth = containerRect.width;
-                    let newHeight = newWidth / aspectRatio;
-                    
-                    // Ajustar se a altura exceder o contêiner
-                    if (newHeight > containerRect.height) {
-                        newHeight = containerRect.height;
-                        newWidth = newHeight * aspectRatio;
-                    }
-                    
-                    cameraView.style.width = `${newWidth}px`;
-                    cameraView.style.height = `${newHeight}px`;
-                    cameraView.style.maxWidth = '100%';
-                    cameraView.style.maxHeight = '100%';
-                };
-                
-                showStatus("Câmera ativada. Posicione e clique em.", 'info');
-            } catch (err) {
-                showError("Erro ao acessar a câmera: " + err.message);
-            }
-        } else {
-            // Tirar foto
-            const canvas = document.createElement('canvas');
-            const videoWidth = cameraView.videoWidth;
-            const videoHeight = cameraView.videoHeight;
-            
-            // Definir o tamanho do canvas para a resolução real do vídeo
-            canvas.width = videoWidth;
-            canvas.height = videoHeight;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(cameraView, 0, 0, canvas.width, canvas.height);
-            
-            // Efeito de flash
-            cameraView.style.transition = '0.3s';
-            cameraView.style.filter = 'brightness(2)';
-            setTimeout(() => {
-                cameraView.style.filter = 'brightness(1)';
-            }, 300);
-            
-            // Converter para base64
-            currentImage = canvas.toDataURL('image/jpeg', 0.9); // Aumentar qualidade
-            imagePreview.src = currentImage;
-            imagePreview.style.display = 'block';
-            cameraView.style.display = 'none';
-            
-            // Ajustar imagem para caber no contêiner mantendo proporção
-            const container = document.querySelector('.media-container');
-            const containerRect = container.getBoundingClientRect();
-            const aspectRatio = videoWidth / videoHeight;
-            let newWidth = containerRect.width;
-            let newHeight = newWidth / aspectRatio;
-            
-            // Ajustar se a altura exceder o contêiner
-            if (newHeight > containerRect.height) {
-                newHeight = containerRect.height;
-                newWidth = newHeight * aspectRatio;
-            }
-            
-            imagePreview.style.width = `${newWidth}px`;
-            imagePreview.style.height = `${newHeight}px`;
-            imagePreview.style.maxWidth = '100%';
-            imagePreview.style.maxHeight = '100%';
-            imagePreview.style.transform = 'translate(-50%, -50%)';
-            
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-            
-            isCameraActive = false;
-            toggleCameraBtn.innerHTML = '<i class="fas fa-camera"></i>';
-            uploadBtn.disabled = false;
-            addTextBtn.disabled = false;
-            
-            showStatus("Foto capturada. Clique em 'Enviar para o Drive'.", 'info');
+            await startCamera();
         }
+    });
+
+    // Botão para cancelar
+    cancelCameraBtn.addEventListener('click', () => {
+        exitFullscreen();
+    });
+
+    // Botão para capturar foto
+    capturePhotoBtn.addEventListener('click', () => {
+        const canvas = document.createElement('canvas');
+        const videoWidth = cameraView.videoWidth;
+        const videoHeight = cameraView.videoHeight;
+        
+        canvas.width = videoWidth;
+        canvas.height = videoHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(cameraView, 0, 0, canvas.width, canvas.height);
+        
+        // Efeito de flash
+        cameraView.style.transition = '0.3s';
+        cameraView.style.filter = 'brightness(2)';
+        setTimeout(() => {
+            cameraView.style.filter = 'brightness(1)';
+        }, 300);
+        
+        // Converter para base64
+        currentImage = canvas.toDataURL('image/jpeg', 0.9);
+        imagePreview.src = currentImage;
+        imagePreview.style.display = 'block';
+        cameraView.style.display = 'none';
+        
+        // Ajustar imagem para caber no contêiner
+        const containerRect = mediaContainer.getBoundingClientRect();
+        const aspectRatio = videoWidth / videoHeight;
+        let newWidth = containerRect.width;
+        let newHeight = newWidth / aspectRatio;
+        
+        if (newHeight > containerRect.height) {
+            newHeight = containerRect.height;
+            newWidth = newHeight * aspectRatio;
+        }
+        
+        imagePreview.style.width = `${newWidth}px`;
+        imagePreview.style.height = `${newHeight}px`;
+        imagePreview.style.maxWidth = '100%';
+        imagePreview.style.maxHeight = '100%';
+        imagePreview.style.transform = 'translate(-50%, -50%)';
+        
+        // Sair do modo de tela cheia
+        exitFullscreen();
+        uploadBtn.disabled = false;
+        addTextBtn.disabled = false;
+        
+        showStatus("Foto capturada. Clique em 'Enviar para o Drive'.", 'info');
+    });
+
+    // Botão para virar a câmera
+    flipCameraBtn.addEventListener('click', async () => {
+        facingMode = facingMode === 'environment' ? 'user' : 'environment';
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        await startCamera();
     });
 
     // Escolher arquivo
@@ -386,8 +245,165 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // ========== FUNCIONALIDADES DE TEXTO ==========
+    addTextBtn.addEventListener('click', () => {
+        addTextElement('Clique para editar');
+    });
+
+    function addTextElement(initialText) {
+        const textElement = document.createElement('div');
+        textElement.className = 'draggable-text text-active';
+        textElement.contentEditable = true;
+        textElement.textContent = initialText;
+        textElement.style.color = textColor.value;
+        textElement.style.fontSize = `${textSize.value}px`;
+        textElement.style.fontFamily = fonts[currentFontIndex];
+        
+        textElement.style.left = '50%';
+        textElement.style.top = '50%';
+        
+        makeDraggable(textElement);
+        
+        textElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectTextElement(textElement);
+        });
+        
+        mediaContainer.appendChild(textElement);
+        selectTextElement(textElement);
+        textInput.value = initialText;
+        textInput.focus();
+    }
+
+    function selectTextElement(element) {
+        if (activeTextElement) {
+            activeTextElement.classList.remove('text-active');
+            activeTextElement.contentEditable = false;
+        }
+        activeTextElement = element;
+        element.classList.add('text-active');
+        element.contentEditable = true;
+        textToolbar.style.display = 'block';
+        
+        textInput.value = element.textContent;
+        textColor.value = rgbToHex(element.style.color) || '#000000';
+        const fontSize = parseInt(element.style.fontSize);
+        textSize.value = isNaN(fontSize) ? 24 : fontSize;
+        textSizeValue.textContent = `${textSize.value}px`;
+    }
+
+    function makeDraggable(element) {
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        
+        element.onmousedown = dragMouseDown;
+        
+        function dragMouseDown(e) {
+            e = e || window.event;
+            e.preventDefault();
+            e.stopPropagation();
+            
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            document.onmousemove = elementDrag;
+        }
+        
+        function elementDrag(e) {
+            e = e || window.event;
+            e.preventDefault();
+            
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            
+            const rect = mediaContainer.getBoundingClientRect();
+            let newTop = (element.offsetTop - pos2) / rect.height * 100;
+            let newLeft = (element.offsetLeft - pos1) / rect.width * 100;
+            
+            newTop = Math.max(0, Math.min(100, newTop));
+            newLeft = Math.max(0, Math.min(100, newLeft));
+            
+            element.style.top = `${newTop}%`;
+            element.style.left = `${newLeft}%`;
+        }
+        
+        function closeDragElement() {
+            document.onmouseup = null;
+            document.onmousemove = null;
+        }
+    }
+
+    textInput.addEventListener('input', () => {
+        if (activeTextElement) {
+            activeTextElement.textContent = textInput.value;
+        }
+    });
+
+    textColor.addEventListener('input', () => {
+        if (activeTextElement) {
+            activeTextElement.style.color = textColor.value;
+        }
+    });
+
+    textSize.addEventListener('input', () => {
+        const size = textSize.value;
+        textSizeValue.textContent = `${size}px`;
+        if (activeTextElement) {
+            activeTextElement.style.fontSize = `${size}px`;
+        }
+    });
+
+    changeFont.addEventListener('click', () => {
+        currentFontIndex = (currentFontIndex + 1) % fonts.length;
+        changeFont.textContent = fonts[currentFontIndex];
+        if (activeTextElement) {
+            activeTextElement.style.fontFamily = fonts[currentFontIndex];
+        }
+    });
+
+    alignLeft.addEventListener('click', () => {
+        if (activeTextElement) activeTextElement.style.textAlign = 'left';
+    });
+    alignCenter.addEventListener('click', () => {
+        if (activeTextElement) activeTextElement.style.textAlign = 'center';
+    });
+    alignRight.addEventListener('click', () => {
+        if (activeTextElement) activeTextElement.style.textAlign = 'right';
+    });
+
+    finishText.addEventListener('click', () => {
+        if (activeTextElement) {
+            activeTextElement.classList.remove('text-active');
+            activeTextElement.contentEditable = false;
+            activeTextElement = null;
+            textToolbar.style.display = 'none';
+        }
+    });
+
+    mediaContainer.addEventListener('click', (e) => {
+        if (e.target === mediaContainer) {
+            if (activeTextElement) {
+                activeTextElement.classList.remove('text-active');
+                activeTextElement.contentEditable = false;
+                activeTextElement = null;
+                textToolbar.style.display = 'none';
+            }
+        }
+    });
+
+    function rgbToHex(rgb) {
+        if (!rgb) return '#000000';
+        const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+        if (!match) return rgb;
+        
+        function hex(x) {
+            return ("0" + parseInt(x).toString(16)).slice(-2);
+        }
+        return "#" + hex(match[1]) + hex(match[2]) + hex(match[3]);
+    }
+
     // ========== FUNCIONALIDADES DE FILTROS ==========
-    // Selecionar filtro
     filterBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             filterBtns.forEach(b => b.classList.remove('active'));
@@ -397,7 +413,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Aplicar filtro
     function applyFilter() {
         if (!currentImage) return;
         
@@ -405,7 +420,6 @@ document.addEventListener('DOMContentLoaded', function() {
         let filterValue = currentFilter;
         
         if (currentFilter !== 'none') {
-            // Ajustar intensidade do filtro
             filterValue = currentFilter.replace(/([\d.]+)/g, match => {
                 return parseFloat(match) * intensity;
             });
@@ -414,13 +428,11 @@ document.addEventListener('DOMContentLoaded', function() {
         imagePreview.style.filter = filterValue;
     }
 
-    // Controle de intensidade
     filterIntensity.addEventListener('input', () => {
         currentFilterIntensity = filterIntensity.value;
         applyFilter();
     });
 
-    // Botão aplicar filtro permanentemente
     applyFilterBtn.addEventListener('click', () => {
         if (!currentImage) return;
         
@@ -448,7 +460,6 @@ document.addEventListener('DOMContentLoaded', function() {
         img.src = currentImage;
     });
 
-    // Botão resetar filtro
     resetFilterBtn.addEventListener('click', () => {
         imagePreview.style.filter = 'none';
         currentFilter = 'none';
@@ -458,7 +469,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ========== FUNCIONALIDADE DE UPLOAD ==========
-    // Enviar para o Drive
     uploadBtn.addEventListener('click', async () => {
         if (!currentImage) {
             showError("Nenhuma imagem para enviar");
@@ -470,10 +480,8 @@ document.addEventListener('DOMContentLoaded', function() {
             showStatus("Enviando imagem...", 'info');
             progressContainer.style.display = 'block';
             
-            // Simular progresso
             simulateUploadProgress();
             
-            // Criar canvas com a imagem e textos
             const canvas = document.createElement('canvas');
             const img = new Image();
             
@@ -487,7 +495,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
             
-            // Adicionar textos ao canvas
             const textElements = document.querySelectorAll('.draggable-text');
             textElements.forEach(textElement => {
                 const text = textElement.textContent;
@@ -496,7 +503,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const fontFamily = textElement.style.fontFamily || 'Arial';
                 const textAlign = textElement.style.textAlign || 'center';
                 
-                // Calcular posição baseada em porcentagem
                 const left = parseFloat(textElement.style.left) || 50;
                 const top = parseFloat(textElement.style.top) || 50;
                 
@@ -508,15 +514,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 ctx.textAlign = textAlign;
                 ctx.textBaseline = 'middle';
                 
-                // Desenhar texto
                 ctx.fillText(text, x, y);
             });
             
-            // Converter para base64
             const finalImage = canvas.toDataURL('image/jpeg', 0.8);
             const base64Data = finalImage.split(',')[1];
             
-            // Enviar para o Google Apps Script
             const response = await fetch(scriptUrl, {
                 method: 'POST',
                 body: base64Data
@@ -529,7 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 uploadBtn.disabled = true;
                 currentImage = null;
                 
-                // Resetar após 5 segundos
                 setTimeout(() => {
                     resetInterface();
                 }, 5000);
@@ -576,11 +578,9 @@ document.addEventListener('DOMContentLoaded', function() {
         addTextBtn.disabled = true;
         fileInput.value = '';
         
-        // Remover todos os textos
         document.querySelectorAll('.draggable-text').forEach(el => el.remove());
         textToolbar.style.display = 'none';
         
-        // Resetar filtros
         imagePreview.style.filter = 'none';
         currentFilter = 'none';
         filterBtns.forEach(b => b.classList.remove('active'));
@@ -592,7 +592,6 @@ document.addEventListener('DOMContentLoaded', function() {
             stream = null;
         }
         
-        // Resetar botão da câmera
         isCameraActive = false;
         toggleCameraBtn.innerHTML = '<i class="fas fa-camera"></i>';
     }
@@ -614,6 +613,5 @@ document.addEventListener('DOMContentLoaded', function() {
         progressText.textContent = `${Math.round(percent)}%`;
     }
     
-    // Inicializar - desabilitar o botão de texto no carregamento
     addTextBtn.disabled = true;
 });

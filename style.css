@@ -153,6 +153,19 @@ h3 {
     align-items: center;
 }
 
+.media-container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    z-index: 1000;
+    background-color: black;
+}
+
 #cameraView {
     width: auto;
     height: auto;
@@ -163,7 +176,7 @@ h3 {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    object-fit: contain; /* Alterado para manter proporção */
+    object-fit: contain;
 }
 
 #imagePreview {
@@ -351,6 +364,28 @@ h3 {
     outline: 2px dashed var(--primary-color);
 }
 
+/* Estilos dos Controles da Câmera */
+.camera-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    z-index: 1010;
+}
+
+.camera-controls .btn {
+    width: 70px;
+    height: 70px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 2px solid white;
+}
+
+.camera-controls .btn i {
+    font-size: 28px;
+}
+
 /* Estilos dos Filtros */
 .filters-container {
     width: 100%;
@@ -503,6 +538,15 @@ h3 {
         height: 70px;
     }
 
+    .camera-controls .btn {
+        width: 60px;
+        height: 60px;
+    }
+
+    .camera-controls .btn i {
+        font-size: 24px;
+    }
+
     #realTimeText {
         font-size: 20px;
     }
@@ -564,6 +608,15 @@ h3 {
     .filter-btn span {
         font-size: 10px;
         padding: 2px;
+    }
+
+    .camera-controls .btn {
+        width: 50px;
+        height: 50px;
+    }
+
+    .camera-controls .btn i {
+        font-size: 20px;
     }
 
     #realTimeText {
