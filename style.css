@@ -70,6 +70,7 @@ h3 {
     gap: 15px;
     width: 100%;
     justify-content: center;
+    position: relative;
 }
 
 .btn {
@@ -86,6 +87,7 @@ h3 {
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+    z-index: 10;
 }
 
 .btn i {
@@ -152,10 +154,16 @@ h3 {
 }
 
 #cameraView {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
     display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    object-fit: contain; /* Alterado para manter proporção */
 }
 
 #imagePreview {
@@ -194,6 +202,19 @@ h3 {
 .placeholder p {
     font-size: 18px;
     color: #a0a0a0;
+}
+
+#realTimeText {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    color: #000;
+    text-align: center;
+    display: none;
+    z-index: 10;
+    font-weight: 500;
 }
 
 #fileInput {
@@ -255,7 +276,7 @@ h3 {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* Text Editor Styles */
+/* Estilos do Editor de Texto */
 .text-toolbar {
     position: absolute;
     bottom: 20px;
@@ -330,7 +351,7 @@ h3 {
     outline: 2px dashed var(--primary-color);
 }
 
-/* Filtros Styles */
+/* Estilos dos Filtros */
 .filters-container {
     width: 100%;
     max-width: 600px;
@@ -481,6 +502,10 @@ h3 {
         width: 70px;
         height: 70px;
     }
+
+    #realTimeText {
+        font-size: 20px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -539,5 +564,9 @@ h3 {
     .filter-btn span {
         font-size: 10px;
         padding: 2px;
+    }
+
+    #realTimeText {
+        font-size: 18px;
     }
 }
