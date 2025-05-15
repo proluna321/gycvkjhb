@@ -93,6 +93,11 @@ document.addEventListener('DOMContentLoaded', function() {
             selectTextElement(textElement);
         });
         
+        textElement.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            selectTextElement(textElement);
+        });
+        
         mediaContainer.appendChild(textElement);
         selectTextElement(textElement);
         textInput.value = initialText;
@@ -283,8 +288,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         facingMode: 'environment',
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     } 
                 });
                 
@@ -298,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 isCameraActive = true;
                 toggleCameraBtn.innerHTML = '<i class="fas fa-times"></i>';
                 
-                showStatus("Câmera ativada. Posicione e clique no botão vermelho para capturar.", 'info');
+                showStatus("Câmera ativada. Posicione e toque no botão vermelho para capturar.", 'info');
             } catch (err) {
                 showError("Erro ao acessar a câmera: " + err.message);
             }
@@ -319,7 +324,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Botão para tirar foto
-    capturePhotoBtn.addEventListener('click', () => {
+    capturePhotoBtn.addEventListener('click', capturePhoto);
+    capturePhotoBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        capturePhoto();
+    });
+
+    function capturePhoto() {
         const canvas = document.createElement('canvas');
         const videoWidth = cameraView.videoWidth;
         const videoHeight = cameraView.videoHeight;
@@ -371,8 +382,8 @@ document.addEventListener('DOMContentLoaded', function() {
         uploadBtn.disabled = false;
         addTextBtn.disabled = false;
         
-        showStatus("Foto capturada. Clique em 'Enviar para o Drive'.", 'info');
-    });
+        showStatus("Foto capturada. Toque em 'Enviar para o Drive'.", 'info');
+    }
 
     // Escolher arquivo
     chooseFileBtn.addEventListener('click', () => {
@@ -422,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 uploadBtn.disabled = false;
                 addTextBtn.disabled = false;
                 
-                showStatus("Imagem selecionada. Clique em 'Enviar para o Drive'.", 'info');
+                showStatus("Imagem selecionada. Toque em 'Enviar para o Drive'.", 'info');
             };
             reader.readAsDataURL(file);
         } else {
@@ -434,6 +445,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Selecionar filtro
     filterBtns.forEach(btn => {
         btn.addEventListener('click', () => {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            applyFilter();
+        });
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
             filterBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
