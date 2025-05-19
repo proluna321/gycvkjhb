@@ -22,8 +22,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const filtersContainer = document.getElementById('filtersContainer');
     const filterBtns = document.querySelectorAll('.filter-btn');
     const filterIntensity = document.getElementById('filterIntensity');
-    const applyFilterBtn = document.getElementById('applyFilter');
-    const resetFilterBtn = document.getElementById('resetFilter');
 
     // Variáveis globais
     let stream = null;
@@ -338,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         isCameraActive = false;
-        uploadBtn.disabled = false; // Ensure button is enabled after capture
+        uploadBtn.disabled = false;
         addTextBtn.disabled = false;
         
         showStatus("Foto capturada. Clique em 'Enviar para o Drive'.", 'info');
@@ -420,7 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     stream = null;
                 }
                 
-                uploadBtn.disabled = false; // Ensure button is enabled after file selection
+                uploadBtn.disabled = false;
                 addTextBtn.disabled = false;
                 
                 showStatus("Imagem selecionada. Clique em 'Enviar para o Drive'.", 'info');
@@ -451,8 +449,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (currentFilter !== 'none') {
             // Ajustar intensidade do filtro
-            filterValue = currentFilter.replace(/([\d.]+)/g, match => {
-                return parseFloat(match) * intensity;
+            filterValue = currentFilter.replace(/([\d.]+)(%|px|deg)/g, (match, number, unit) => {
+                return `${parseFloat(number) * intensity}${unit}`;
             });
         }
         
@@ -465,43 +463,6 @@ document.addEventListener('DOMContentLoaded', function() {
         applyFilter();
     });
 
-    // Botão aplicar filtro permanentemente
-    applyFilterBtn.addEventListener('click', () => {
-        if (!currentImage) return;
-        
-        const canvas = document.createElement('canvas');
-        const img = new Image();
-        
-        img.onload = function() {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.filter = imagePreview.style.filter || 'none';
-            ctx.drawImage(img, 0, 0);
-            
-            currentImage = canvas.toDataURL('image/jpeg');
-            imagePreview.src = currentImage;
-            imagePreview.style.filter = 'none';
-            currentFilter = 'none';
-            filterBtns.forEach(b => b.classList.remove('active'));
-            document.querySelector('.filter-btn[data-filter="none"]').classList.add('active');
-            filterIntensity.value = 100;
-            
-            showStatus("Filtro aplicado com sucesso!", 'success');
-        };
-        
-        img.src = currentImage;
-    });
-
-    // Botão resetar filtro
-    resetFilterBtn.addEventListener('click', () => {
-        imagePreview.style.filter = 'none';
-        currentFilter = 'none';
-        filterBtns.forEach(b => b.classList.remove('active'));
-        document.querySelector('.filter-btn[data-filter="none"]').classList.add('active');
-        filterIntensity.value = 100;
-    });
-
     // ========== FUNCIONALIDADE DE UPLOAD ==========
     // Enviar para o Drive
     uploadBtn.addEventListener('click', async () => {
@@ -511,7 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         try {
-            uploadBtn.disabled = true; // Disable the button immediately after clicking
+            uploadBtn.disabled = true;
             showStatus("Enviando imagem...", 'info');
             progressContainer.style.display = 'block';
             
@@ -530,6 +491,9 @@ document.addEventListener('DOMContentLoaded', function() {
             canvas.width = img.width;
             canvas.height = img.height;
             const ctx = canvas.getContext('2d');
+            
+            // Aplicar filtro ao canvas
+            ctx.filter = imagePreview.style.filter || 'none';
             ctx.drawImage(img, 0, 0);
             
             // Adicionar textos ao canvas
@@ -584,11 +548,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 5000);
             } else {
                 showError("Erro ao enviar: " + (result.error || "Desconhecido"));
-                uploadBtn.disabled = false; // Re-enable if upload fails
+                uploadBtn.disabled = false;
             }
         } catch (err) {
             showError("Falha no envio: " + err.message);
-            uploadBtn.disabled = false; // Re-enable on exception
+            uploadBtn.disabled = false;
         } finally {
             progressContainer.style.display = 'none';
         }
